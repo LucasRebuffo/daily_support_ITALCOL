@@ -43,8 +43,13 @@ Thumbs.db
 *.sqlite3
 *.sqlite
 
-# Project-specific data inputs
+# Project-specific data inputs (protect report files)
 INSUMOS/
+INSUMOS/**/
 INSUMOS/**/*.xlsx
 INSUMOS/**/*.xls
 INSUMOS/**/*.csv
+
+# Local uploads/temp (if created)
+uploads/
+.tmp/
