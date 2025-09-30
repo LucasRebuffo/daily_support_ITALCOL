@@ -27,10 +27,11 @@ pip install -r requirements.txt
   - `Factura electronica/`
 - `src/` → Código fuente
 - `excel_stats.db` → Base de datos SQLite generada automáticamente
+- `docs/` → Interfaz web (para GitHub Pages)
 
 Nota: `INSUMOS/` está en `.gitignore` para evitar subir datos.
 
-### Uso rápido
+### Uso rápido (procesamiento)
 1. Copia los archivos Excel `.xlsx` en la subcarpeta correspondiente dentro de `INSUMOS/`.
 2. Ejecuta el script principal (procesa todas las subcarpetas conocidas):
 ```powershell
@@ -41,6 +42,20 @@ python .\src\main.py
 - Calcula métricas específicas del proceso.
 - Guarda estadísticas en `excel_stats.db` (tabla `stats`).
 - Mueve cada archivo procesado a una subcarpeta con la fecha actual `DDMMYYYY` dentro de la misma carpeta del proceso.
+
+### Web (GitHub Pages)
+La UI está en `docs/` y se puede publicar con GitHub Pages (Branch: `main`, carpeta `/docs`). La UI carga directamente la base `docs/data/excel_stats.db` en el navegador usando `sql.js` y consulta la tabla `stats`.
+
+- Copiar la base de datos a `docs/`:
+```powershell
+python .\src\export_stats.py
+```
+Esto copiará `excel_stats.db` a `docs\data\excel_stats.db`.
+
+- Publicar en GitHub Pages:
+  1) Commit y push de `docs/` y `docs/data/excel_stats.db`.
+  2) En GitHub → Settings → Pages → Source: `Deploy from a branch`, Branch: `main`, Folder: `/docs`.
+  3) Abrir la URL generada.
 
 ### Tipos de proceso soportados
 - `Sincronizacion de pedidos` (implementado):
@@ -81,6 +96,7 @@ Componentes principales:
 - `src/processors/pedidos_processor.py` → Lógica de "Sincronizacion de pedidos".
 - `src/processors/placeholder_processor.py` → `Factura electronica` implementado; los demás procesos son placeholders a completar.
 - `src/main.py` → Orquesta todos los procesadores.
+- `src/export_stats.py` → Copia `excel_stats.db` a `docs/data/excel_stats.db` para la web.
 
 ### Errores comunes
 - "Faltan columnas requeridas": en pedidos, verifica `Pedido Número` y `Estado`; en factura electrónica, `Factura` y `Estado proceso` y que exista hoja `Facturas`.

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ITALCOL - Dashboard de Estadísticas</title>
+    <link rel="icon" href="data:," />
+    <!-- Roboto font for MUI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Material UI (MUI) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@mui/material@5/umd/material-ui.production.min.js"></script>
+    <!-- sql.js to read SQLite DB in-browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js" integrity="sha512-wgR6f0G5aZePqH3S4GIcV8b8NQg8zLWPt1F8qI1e6ZqR1fC9s0TWsJP6e7y3Jx2u0iI3bNs0sV7dp5QFh0h5nQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+      body { margin: 0; font-family: Roboto, sans-serif; background: #f5f5f5; }
+      #root { min-height: 100vh; }
+      a { color: inherit; }
+      .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+      .footer { text-align:center; color:#888; padding: 24px 0; }
+      .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/javascript">
+      const { useEffect, useMemo, useState } = React;
+      const {
+        CssBaseline,
+        Box,
+        AppBar,
+        Toolbar,
+        Typography,
+        Container,
+        Paper,
+        Table,
+        TableHead,
+        TableRow,
+        TableCell,
+        TableBody,
+        TablePagination,
+        IconButton,
+        Stack,
+        TextField,
+        Chip,
+        Alert,
+        Skeleton,
+      } = MaterialUI;
+
+      function formatDate(iso) {
+        try {
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return iso;
+          return d.toLocaleString();
+        } catch { return iso; }
+      }
+
+      function StatusChip({ value }) {
+        const ok = typeof value === 'number' ? value >= 95 : false;
+        const label = typeof value === 'number' ? value.toFixed(2) + '%' : String(value ?? '');
+        return React.createElement(Chip, {
+          label,
+          color: ok ? 'success' : 'default',
+          variant: ok ? 'filled' : 'outlined'
+        });
+      }
+
+      async function loadDatabaseRows() {
+        // Load sql.js and the DB file
+        const SQL = await initSqlJs({ locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file });
+        const dbResp = await fetch('./data/excel_stats.db', { cache: 'no-store' });
+        if (!dbResp.ok) throw new Error('No se pudo cargar excel_stats.db');
+        const buf = await dbResp.arrayBuffer();
+        const db = new SQL.Database(new Uint8Array(buf));
+        const result = db.exec("SELECT archivo, fecha_proceso, efectividad, total_registros FROM stats ORDER BY fecha_proceso DESC");
+        if (!result || result.length === 0) return [];
+        const columns = result[0].columns;
+        const values = result[0].values;
+        return values.map(row => ({
+          archivo: row[0],
+          fecha_proceso: row[1],
+          efectividad: row[2],
+          total_registros: row[3],
+        }));
+      }
+
+      function useStatsData() {
+        const [data, setData] = useState({ rows: [], loading: true, error: null });
+        useEffect(() => {
+          loadDatabaseRows()
+            .then(rows => setData({ rows, loading: false, error: null }))
+            .catch(err => setData({ rows: [], loading: false, error: err.message }));
+        }, []);
+        return data;
+      }
+
+      function Dashboard() {
+        const { rows, loading, error } = useStatsData();
+        const [page, setPage] = useState(0);
+        const [rowsPerPage, setRowsPerPage] = useState(10);
+        const [query, setQuery] = useState('');
+
+        const filtered = useMemo(() => {
+          const q = query.trim().toLowerCase();
+          if (!q) return rows;
+          return rows.filter(r => (
+            String(r.archivo ?? '').toLowerCase().includes(q) ||
+            String(r.fecha_proceso ?? '').toLowerCase().includes(q)
+          ));
+        }, [rows, query]);
+
+        const paged = useMemo(() => {
+          const start = page * rowsPerPage;
+          return filtered.slice(start, start + rowsPerPage);
+        }, [filtered, page, rowsPerPage]);
+
+        useEffect(() => { setPage(0); }, [query, rowsPerPage]);
+
+        return (
+          React.createElement(Box, null,
+            React.createElement(AppBar, { position: 'static' },
+              React.createElement(Toolbar, null,
+                React.createElement(Typography, { variant: 'h6', component: 'div', sx: { flexGrow: 1 } }, 'ITALCOL - Estadísticas'),
+                React.createElement('a', { href: 'https://github.com/', target: '_blank', rel: 'noreferrer', className: 'code' }, 'GitHub')
+              )
+            ),
+            React.createElement('div', { className: 'container' },
+              React.createElement(Stack, { spacing: 2 },
+                React.createElement(Paper, { elevation: 1, sx: { p: 2 } },
+                  React.createElement(Stack, { direction: 'row', spacing: 2, alignItems: 'center' },
+                    React.createElement(Typography, { variant: 'h6' }, 'Registros de procesamiento'),
+                    React.createElement(Box, { sx: { flexGrow: 1 } }),
+                    React.createElement(TextField, {
+                      size: 'small',
+                      label: 'Buscar por archivo/fecha',
+                      value: query,
+                      onChange: (e) => setQuery(e.target.value)
+                    })
+                  ),
+                  loading && React.createElement(Box, { sx: { mt: 2 } },
+                    React.createElement(Skeleton, { height: 40 }),
+                    React.createElement(Skeleton, { height: 40 }),
+                    React.createElement(Skeleton, { height: 40 })
+                  ),
+                  !loading && error && React.createElement(Alert, { severity: 'error', sx: { mt: 2 } }, error),
+                  !loading && !error && (
+                    React.createElement(Box, { sx: { mt: 2 } },
+                      React.createElement(Table, { size: 'small' },
+                        React.createElement(TableHead, null,
+                          React.createElement(TableRow, null,
+                            React.createElement(TableCell, null, 'Archivo'),
+                            React.createElement(TableCell, null, 'Fecha de proceso'),
+                            React.createElement(TableCell, null, 'Efectividad'),
+                            React.createElement(TableCell, null, 'Total registros')
+                          )
+                        ),
+                        React.createElement(TableBody, null,
+                          paged.map((r, idx) => (
+                            React.createElement(TableRow, { key: idx },
+                              React.createElement(TableCell, null, r.archivo ?? ''),
+                              React.createElement(TableCell, null, formatDate(r.fecha_proceso)),
+                              React.createElement(TableCell, null, React.createElement(StatusChip, { value: r.efectividad })),
+                              React.createElement(TableCell, null, r.total_registros ?? '')
+                            )
+                          ))
+                        )
+                      ),
+                      React.createElement(TablePagination, {
+                        component: 'div',
+                        count: filtered.length,
+                        page,
+                        onPageChange: (e, p) => setPage(p),
+                        rowsPerPage,
+                        onRowsPerPageChange: (e) => setRowsPerPage(parseInt(e.target.value, 10)),
+                        rowsPerPageOptions: [5, 10, 25, 50]
+                      })
+                    )
+                  )
+                ),
+                React.createElement('div', { className: 'footer' },
+                  React.createElement(Typography, { variant: 'caption' }, '© ', new Date().getFullYear(), ' ITALCOL')
+                )
+              )
+            )
+          )
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(Dashboard)));
+    </script>
+  </body>
+</html>
