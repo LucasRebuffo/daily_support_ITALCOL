@@ -1,294 +1,96 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ITALCOL - Dashboard de Estadísticas</title>
-    <link rel="icon" href="data:," />
-    <!-- Roboto font for MUI -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- Material UI (MUI) -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@mui/material@5/umd/material-ui.production.min.js"></script>
-    <!-- MUI X Date Pickers + Day.js adapter -->
-    <script crossorigin src="https://unpkg.com/dayjs@1/dayjs.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@mui/x-date-pickers@6.18.3/umd/material-ui-x-date-pickers.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@mui/x-date-pickers@6.18.3/umd/material-ui-x-date-pickersAdapterDayjs.min.js"></script>
-    <!-- SheetJS for client-side Excel parsing -->
-    <script crossorigin src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-      body { margin: 0; font-family: Roboto, sans-serif; background: #f5f5f5; }
-      #root { min-height: 100vh; }
-      a { color: inherit; }
-      .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-      .footer { text-align:center; color:#888; padding: 24px 0; }
-      .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ITALCOL - Dashboard de Estadísticas</title>
+  <link rel="icon" href="data:," />
+  
+  <!-- Roboto font for MUI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Material UI (MUI) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/@mui/material@5/umd/material-ui.production.min.js"></script>
+  
+  <!-- SheetJS for client-side Excel parsing -->
+  <script crossorigin src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    body { 
+      margin: 0; 
+      font-family: Roboto, sans-serif; 
+      background: #f5f5f5; 
+    }
+    #root { 
+      min-height: 100vh; 
+    }
+    .container { 
+      max-width: 1100px; 
+      margin: 24px auto; 
+      padding: 0 16px; 
+    }
+    .footer { 
+      text-align: center; 
+      color: #888; 
+      padding: 24px 0; 
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
 
-    <script type="text/javascript">
-      const { useEffect, useMemo, useState } = React;
-      const {
-        Box,
-        AppBar,
-        Toolbar,
-        Typography,
-        Paper,
-        Table,
-        TableHead,
-        TableRow,
-        TableCell,
-        TableBody,
-        TablePagination,
-        Stack,
-        TextField,
-        Chip,
-        Alert,
-        Skeleton,
-        Button,
-        MenuItem,
-        Select,
-        FormControl,
-        InputLabel,
-      } = MaterialUI;
-      const { LocalizationProvider, DateTimePicker } = MaterialUI.XDatePickers;
-      const { AdapterDayjs } = MaterialUI.XDatePickersAdapterDayjs;
+  <!-- Import our modules -->
+  <script type="module">
+    import { Processors, readExcelFile } from './js/processors.js';
+    import { UploadPanel, ResultsTable } from './js/components.js';
 
-      function formatDate(iso) {
-        try { const d = new Date(iso); if (isNaN(d.getTime())) return iso; return d.toLocaleString(); } catch { return iso; }
-      }
+    // Make modules available globally for React components
+    window.Processors = Processors;
+    window.readExcelFile = readExcelFile;
+    window.UploadPanel = UploadPanel;
+    window.ResultsTable = ResultsTable;
 
-      function StatusChip({ value }) {
-        const ok = typeof value === 'number' ? value >= 95 : false;
-        const label = typeof value === 'number' ? value.toFixed(2) + '%' : String(value ?? '');
-        return React.createElement(Chip, { label, color: ok ? 'success' : 'default', variant: ok ? 'filled' : 'outlined' });
-      }
+    function Dashboard() {
+      const [rows, setRows] = React.useState([]);
+      const [query, setQuery] = React.useState('');
 
-      // Client-side processors
-      function processPedidos(df) {
-        const cols = df[0] ? Object.keys(df[0]) : [];
-        if (!(cols.includes('Pedido Número') && cols.includes('Estado'))) throw new Error('Faltan columnas requeridas: Pedido Número, Estado');
-        const byPedido = new Map();
-        for (const row of df) {
-          const pedido = row['Pedido Número'];
-          const estado = String(row['Estado'] ?? '').trim().toLowerCase();
-          const exito = estado === 'exitoso';
-          if (!byPedido.has(pedido)) byPedido.set(pedido, false);
-          if (exito) byPedido.set(pedido, true);
-        }
-        const total = byPedido.size;
-        let exitosos = 0; for (const v of byPedido.values()) if (v) exitosos++;
-        const efectividad = total > 0 ? (exitosos / total) * 100 : 0;
-        return { efectividad, total };
-      }
+      const handleResults = (newResults) => {
+        setRows(prev => [...newResults, ...prev]);
+      };
 
-      function processFacturaElectronica(df) {
-        const cols = df[0] ? Object.keys(df[0]) : [];
-        if (!(cols.includes('Factura') && cols.includes('Estado proceso'))) throw new Error('Faltan columnas requeridas: Factura, Estado proceso');
-        const byFactura = new Map();
-        for (const row of df) {
-          const factura = row['Factura'];
-          const estado = String(row['Estado proceso'] ?? '').trim().toLowerCase();
-          const exito = estado === 'exitoso';
-          if (!byFactura.has(factura)) byFactura.set(factura, false);
-          if (exito) byFactura.set(factura, true);
-        }
-        const total = byFactura.size;
-        let exitosos = 0; for (const v of byFactura.values()) if (v) exitosos++;
-        const efectividad = total > 0 ? (exitosos / total) * 100 : 0;
-        return { efectividad, total };
-      }
-
-      function filterByDatetime(df, colName, startISO, endISO) {
-        if (!colName) return df;
-        if (!df[0] || !(colName in df[0])) return df;
-        const start = startISO ? new Date(startISO).getTime() : null;
-        const end = endISO ? new Date(endISO).getTime() : null;
-        return df.filter(r => {
-          const v = r[colName];
-          const t = v ? new Date(v).getTime() : NaN;
-          if (isNaN(t)) return false;
-          if (start !== null && t < start) return false;
-          if (end !== null && t > end) return false;
-          return true;
-        });
-      }
-
-      function readExcelFile(file, processType, datetimeColumn, startISO, endISO) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            try {
-              const data = new Uint8Array(e.target.result);
-              const wb = XLSX.read(data, { type: 'array' });
-              let wsName;
-              if (processType === 'Factura electronica') wsName = 'Facturas';
-              else wsName = wb.SheetNames[0];
-              const ws = wb.Sheets[wsName];
-              const json = XLSX.utils.sheet_to_json(ws, { defval: null });
-              const filtered = filterByDatetime(json, datetimeColumn, startISO, endISO);
-              if (processType === 'Sincronizacion de pedidos') {
-                const { efectividad, total } = processPedidos(filtered);
-                resolve({ archivo: file.name, efectividad, total_registros: total });
-              } else if (processType === 'Factura electronica') {
-                const { efectividad, total } = processFacturaElectronica(filtered);
-                resolve({ archivo: file.name, efectividad, total_registros: total });
-              } else {
-                resolve({ archivo: file.name, efectividad: 0, total_registros: filtered.length });
-              }
-            } catch (err) { reject(err); }
-          };
-          reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
-          reader.readAsArrayBuffer(file);
-        });
-      }
-
-      function UploadPanel({ onResults }) {
-        const [files, setFiles] = useState([]);
-        const [processType, setProcessType] = useState('Sincronizacion de pedidos');
-        const [startDt, setStartDt] = useState(null);
-        const [endDt, setEndDt] = useState(null);
-        const [datetimeColumn, setDatetimeColumn] = useState('');
-        const [busy, setBusy] = useState(false);
-        const [error, setError] = useState(null);
-
-        const processTypes = [
-          'Sincronizacion de pedidos',
-          'Conciliacion DIAN',
-          'Conciliacion TC',
-          'Eventos acuse DIAN',
-          'Factura agencia de viajes',
-          'Factura electronica',
-        ];
-
-        const handleSubmit = async () => {
-          if (!files || files.length === 0) return;
-          setBusy(true); setError(null);
-          try {
-            const results = [];
-            for (const f of files) {
-              const res = await readExcelFile(
-                f,
-                processType,
-                datetimeColumn || null,
-                startDt ? new Date(startDt).toISOString() : null,
-                endDt ? new Date(endDt).toISOString() : null
-              );
-              results.push(res);
-            }
-            onResults && onResults(results);
-            setFiles([]);
-          } catch (e) {
-            setError(String(e));
-          } finally {
-            setBusy(false);
-          }
-        };
-
-        return (
-          React.createElement(Paper, { elevation: 1, sx: { p: 2 } },
-            React.createElement(Stack, { spacing: 2 },
-              React.createElement(Typography, { variant: 'h6' }, 'Subir archivos a procesar (client-side)'),
-              error && React.createElement(Alert, { severity: 'error' }, String(error)),
-              React.createElement(Stack, { direction: 'row', spacing: 2, alignItems: 'center', flexWrap: 'wrap' },
-                React.createElement(FormControl, { size: 'small', sx: { minWidth: 280 } },
-                  React.createElement(InputLabel, null, 'Proceso'),
-                  React.createElement(Select, { label: 'Proceso', value: processType, onChange: (e) => setProcessType(e.target.value) },
-                    processTypes.map(pt => React.createElement(MenuItem, { key: pt, value: pt }, pt))
-                  )
-                ),
-                React.createElement(TextField, { type: 'file', inputProps: { multiple: true, accept: '.xlsx' }, onChange: (e) => setFiles(Array.from(e.target.files || [])) }),
-                React.createElement(TextField, { size: 'small', label: 'Columna fecha/hora (opcional)', value: datetimeColumn, onChange: (e) => setDatetimeColumn(e.target.value) })
-              ),
-              React.createElement(LocalizationProvider, { dateAdapter: AdapterDayjs },
-                React.createElement(Stack, { direction: 'row', spacing: 2, alignItems: 'center' },
-                  React.createElement(DateTimePicker, { label: 'Desde', value: startDt, onChange: (v) => setStartDt(v) }),
-                  React.createElement(DateTimePicker, { label: 'Hasta', value: endDt, onChange: (v) => setEndDt(v) })
-                )
-              ),
-              React.createElement(Stack, { direction: 'row', spacing: 2 },
-                React.createElement(Button, { variant: 'contained', onClick: handleSubmit, disabled: busy || (files.length === 0) }, busy ? 'Procesando...' : 'Procesar')
+      return React.createElement(React.Fragment, null,
+        React.createElement(MaterialUI.AppBar, { position: 'static' },
+          React.createElement(MaterialUI.Toolbar, null,
+            React.createElement(MaterialUI.Typography, { 
+              variant: 'h6', 
+              component: 'div', 
+              sx: { flexGrow: 1 } 
+            }, 'ITALCOL - Dashboard de Estadísticas')
+          )
+        ),
+        React.createElement('div', { className: 'container' },
+          React.createElement(MaterialUI.Stack, { spacing: 2 },
+            React.createElement(UploadPanel, { onResults: handleResults }),
+            React.createElement(ResultsTable, { rows, query, setQuery }),
+            React.createElement('div', { className: 'footer' },
+              React.createElement(MaterialUI.Typography, { variant: 'caption' }, 
+                '© ', new Date().getFullYear(), ' ITALCOL'
               )
             )
           )
-        );
-      }
+        )
+      );
+    }
 
-      function Dashboard() {
-        const [rows, setRows] = useState([]);
-        const [page, setPage] = useState(0);
-        const [rowsPerPage, setRowsPerPage] = useState(10);
-        const [query, setQuery] = useState('');
-
-        const filtered = useMemo(() => {
-          const q = query.trim().toLowerCase();
-          if (!q) return rows;
-          return rows.filter(r => (
-            String(r.archivo ?? '').toLowerCase().includes(q)
-          ));
-        }, [rows, query]);
-
-        const paged = useMemo(() => {
-          const start = page * rowsPerPage;
-          return filtered.slice(start, start + rowsPerPage);
-        }, [filtered, page, rowsPerPage]);
-
-        useEffect(() => { setPage(0); }, [query, rowsPerPage]);
-
-        return (
-          React.createElement(Box, null,
-            React.createElement(AppBar, { position: 'static' },
-              React.createElement(Toolbar, null,
-                React.createElement(Typography, { variant: 'h6', component: 'div', sx: { flexGrow: 1 } }, 'ITALCOL - Estadísticas (sin API)')
-              )
-            ),
-            React.createElement('div', { className: 'container' },
-              React.createElement(Stack, { spacing: 2 },
-                React.createElement(UploadPanel, { onResults: (r) => setRows(prev => [...r, ...prev]) }),
-                React.createElement(Paper, { elevation: 1, sx: { p: 2 } },
-                  React.createElement(Stack, { direction: 'row', spacing: 2, alignItems: 'center' },
-                    React.createElement(Typography, { variant: 'h6' }, 'Registros (sesión actual)'),
-                    React.createElement(Box, { sx: { flexGrow: 1 } }),
-                    React.createElement(TextField, { size: 'small', label: 'Buscar por archivo', value: query, onChange: (e) => setQuery(e.target.value) })
-                  ),
-                  React.createElement(Box, { sx: { mt: 2 } },
-                    React.createElement(Table, { size: 'small' },
-                      React.createElement(TableHead, null,
-                        React.createElement(TableRow, null,
-                          React.createElement(TableCell, null, 'Archivo'),
-                          React.createElement(TableCell, null, 'Efectividad'),
-                          React.createElement(TableCell, null, 'Total registros')
-                        )
-                      ),
-                      React.createElement(TableBody, null,
-                        paged.map((r, idx) => (
-                          React.createElement(TableRow, { key: idx },
-                            React.createElement(TableCell, null, r.archivo ?? ''),
-                            React.createElement(TableCell, null, React.createElement(StatusChip, { value: r.efectividad })),
-                            React.createElement(TableCell, null, r.total_registros ?? '')
-                          )
-                        ))
-                      )
-                    ),
-                    React.createElement(TablePagination, { component: 'div', count: filtered.length, page, onPageChange: (e, p) => setPage(p), rowsPerPage, onRowsPerPageChange: (e) => setRowsPerPage(parseInt(e.target.value, 10)), rowsPerPageOptions: [5, 10, 25, 50] })
-                  )
-                ),
-                React.createElement('div', { className: 'footer' },
-                  React.createElement(Typography, { variant: 'caption' }, '© ', new Date().getFullYear(), ' ITALCOL')
-                )
-              )
-            )
-          )
-        );
-      }
-
-      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(Dashboard)));
-    </script>
-  </body>
+    // Render the app
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      React.createElement(React.StrictMode, null, React.createElement(Dashboard))
+    );
+  </script>
+</body>
 </html>

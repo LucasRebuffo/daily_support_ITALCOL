@@ -1,34 +1,3 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-*.egg-info/
-.eggs/
-*.egg
-
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-.env
-.python-version
-
-# Testing and type checking
-.mypy_cache/
-.pytest_cache/
-.coverage*
-coverage.xml
-htmlcov/
-.cache/
-
-# Build outputs
-build/
-dist/
-site/
-
 # IDE/editor settings
 .vscode/
 .idea/
@@ -37,19 +6,12 @@ site/
 .DS_Store
 Thumbs.db
 
-# Logs and local databases
-*.log
-*.db
-*.sqlite3
-*.sqlite
+# Virtual environments (if any)
+.venv/
+venv/
+ENV/
+env/
 
-# Project-specific data inputs (protect report files)
-INSUMOS/
-INSUMOS/**/
-INSUMOS/**/*.xlsx
-INSUMOS/**/*.xls
-INSUMOS/**/*.csv
-
-# Local uploads/temp (if created)
-uploads/
-.tmp/
+# Temporary files
+*.tmp
+*.temp
