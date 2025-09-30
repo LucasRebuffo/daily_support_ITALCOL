@@ -14,8 +14,6 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@mui/material@5/umd/material-ui.production.min.js"></script>
-    <!-- sql.js to read SQLite DB in-browser -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js" integrity="sha512-wgR6f0G5aZePqH3S4GIcV8b8NQg8zLWPt1F8qI1e6ZqR1fC9s0TWsJP6e7y3Jx2u0iI3bNs0sV7dp5QFh0h5nQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
       body { margin: 0; font-family: Roboto, sans-serif; background: #f5f5f5; }
       #root { min-height: 100vh; }
@@ -70,30 +68,12 @@
         });
       }
 
-      async function loadDatabaseRows() {
-        // Load sql.js and the DB file
-        const SQL = await initSqlJs({ locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file });
-        const dbResp = await fetch('./data/excel_stats.db', { cache: 'no-store' });
-        if (!dbResp.ok) throw new Error('No se pudo cargar excel_stats.db');
-        const buf = await dbResp.arrayBuffer();
-        const db = new SQL.Database(new Uint8Array(buf));
-        const result = db.exec("SELECT archivo, fecha_proceso, efectividad, total_registros FROM stats ORDER BY fecha_proceso DESC");
-        if (!result || result.length === 0) return [];
-        const columns = result[0].columns;
-        const values = result[0].values;
-        return values.map(row => ({
-          archivo: row[0],
-          fecha_proceso: row[1],
-          efectividad: row[2],
-          total_registros: row[3],
-        }));
-      }
-
       function useStatsData() {
         const [data, setData] = useState({ rows: [], loading: true, error: null });
         useEffect(() => {
-          loadDatabaseRows()
-            .then(rows => setData({ rows, loading: false, error: null }))
+          fetch('./data/stats.json', { cache: 'no-store' })
+            .then(r => { if (!r.ok) throw new Error('No se pudo cargar stats.json'); return r.json(); })
+            .then(rows => setData({ rows: rows || [], loading: false, error: null }))
             .catch(err => setData({ rows: [], loading: false, error: err.message }));
         }, []);
         return data;

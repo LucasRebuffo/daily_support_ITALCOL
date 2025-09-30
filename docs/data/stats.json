@@ -1,0 +1,50 @@
+[
+  {
+    "archivo": "ReporteFacturacion_30092025_SA.xlsx",
+    "fecha_proceso": "2025-09-30 14:55:53.592517",
+    "efectividad": 96.95617948045133,
+    "total_registros": 11433
+  },
+  {
+    "archivo": "ReporteFacturacion_30092025_Occidente.xlsx",
+    "fecha_proceso": "2025-09-30 14:55:51.705159",
+    "efectividad": 94.6762349799733,
+    "total_registros": 5992
+  },
+  {
+    "archivo": "ReporteTrazabilidad_29092025-160034.xlsx",
+    "fecha_proceso": "2025-09-30 14:55:50.723405",
+    "efectividad": 0.0,
+    "total_registros": 7
+  },
+  {
+    "archivo": "ReporteAcuses_092025.xlsx",
+    "fecha_proceso": "2025-09-30 14:55:50.693294",
+    "efectividad": 0.0,
+    "total_registros": 28855
+  },
+  {
+    "archivo": "ReporteConciliacionTC_FAV_29092025-220039.xlsx",
+    "fecha_proceso": "2025-09-30 14:55:46.402158",
+    "efectividad": 0.0,
+    "total_registros": 928
+  },
+  {
+    "archivo": "Reporte_2025-09-30_06-19-23.xlsx",
+    "fecha_proceso": "2025-09-30 14:55:45.987943",
+    "efectividad": 0.0,
+    "total_registros": 29205
+  },
+  {
+    "archivo": "Pedidos_30092025_IBAGUE (1).xlsx",
+    "fecha_proceso": "2025-09-30 13:20:13.755324",
+    "efectividad": 16.666666666666664,
+    "total_registros": 6
+  },
+  {
+    "archivo": "Pedidos_29092025_PALERMO.xlsx",
+    "fecha_proceso": "2025-09-30 13:20:13.727625",
+    "efectividad": 58.730158730158735,
+    "total_registros": 63
+  }
+]

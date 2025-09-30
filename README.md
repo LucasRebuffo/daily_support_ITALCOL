@@ -44,16 +44,16 @@ python .\src\main.py
 - Mueve cada archivo procesado a una subcarpeta con la fecha actual `DDMMYYYY` dentro de la misma carpeta del proceso.
 
 ### Web (GitHub Pages)
-La UI está en `docs/` y se puede publicar con GitHub Pages (Branch: `main`, carpeta `/docs`). La UI carga directamente la base `docs/data/excel_stats.db` en el navegador usando `sql.js` y consulta la tabla `stats`.
+La UI está en `docs/` y se puede publicar con GitHub Pages (Branch: `main`, carpeta `/docs`). La UI carga `docs/data/stats.json` y muestra tabla paginada con Material UI.
 
-- Copiar la base de datos a `docs/`:
+- Exportar datos desde SQLite a JSON:
 ```powershell
 python .\src\export_stats.py
 ```
-Esto copiará `excel_stats.db` a `docs\data\excel_stats.db`.
+Esto generará/actualizará `docs\data\stats.json`.
 
 - Publicar en GitHub Pages:
-  1) Commit y push de `docs/` y `docs/data/excel_stats.db`.
+  1) Commit y push de `docs/` y `docs/data/stats.json`.
   2) En GitHub → Settings → Pages → Source: `Deploy from a branch`, Branch: `main`, Folder: `/docs`.
   3) Abrir la URL generada.
 
@@ -96,7 +96,7 @@ Componentes principales:
 - `src/processors/pedidos_processor.py` → Lógica de "Sincronizacion de pedidos".
 - `src/processors/placeholder_processor.py` → `Factura electronica` implementado; los demás procesos son placeholders a completar.
 - `src/main.py` → Orquesta todos los procesadores.
-- `src/export_stats.py` → Copia `excel_stats.db` a `docs/data/excel_stats.db` para la web.
+- `src/export_stats.py` → Exporta `excel_stats.db` a `docs/data/stats.json` para la web.
 
 ### Errores comunes
 - "Faltan columnas requeridas": en pedidos, verifica `Pedido Número` y `Estado`; en factura electrónica, `Factura` y `Estado proceso` y que exista hoja `Facturas`.
