@@ -1,6 +1,6 @@
-## Daily Support ITALCOL - Procesamiento de pedidos (Excel)
+## Daily Support ITALCOL - Procesamiento de Excel por procesos
 
-Herramienta para procesar archivos Excel de pedidos, calcular efectividad por pedido y registrar resultados en una base de datos SQLite local.
+Herramienta para procesar distintos tipos de reportes Excel en `INSUMOS/`, calcular métricas y registrar resultados en una base SQLite local.
 
 ### Requisitos
 - Python 3.10+ recomendado
@@ -18,32 +18,42 @@ pip install -r requirements.txt
 ```
 
 ### Estructura de carpetas esperada
-- `INSUMOS/Sincronizacion de pedidos/` → Aquí pones los archivos `.xlsx` a procesar
+- `INSUMOS/` → Carpeta raíz de insumos con subcarpetas por proceso:
+  - `Sincronizacion de pedidos/`
+  - `Conciliacion DIAN/`
+  - `Conciliacion TC/`
+  - `Eventos acuse DIAN/`
+  - `Factura agencia de viajes/`
+  - `Factura electronica/`
 - `src/` → Código fuente
 - `excel_stats.db` → Base de datos SQLite generada automáticamente
 
-Nota: La carpeta `INSUMOS/` está en `.gitignore` para evitar subir datos.
+Nota: `INSUMOS/` está en `.gitignore` para evitar subir datos.
 
 ### Uso rápido
-1. Copia los archivos Excel a `INSUMOS/Sincronizacion de pedidos/`.
-2. Ejecuta el script principal:
+1. Copia los archivos Excel `.xlsx` en la subcarpeta correspondiente dentro de `INSUMOS/`.
+2. Ejecuta el script principal (procesa todas las subcarpetas conocidas):
 ```powershell
 python .\src\main.py
 ```
-3. ¿Qué hace?
-- Procesa todos los `.xlsx` en `INSUMOS/Sincronizacion de pedidos/` (ignora subcarpetas).
-- Calcula:
-  - Efectividad (%): un pedido es exitoso si alguna de sus filas tiene `Estado = "Exitoso"`.
-  - Total de pedidos únicos (`Pedido Número`).
+3. ¿Qué hace? Para cada subcarpeta:
+- Procesa todos los `.xlsx` (ignora subcarpetas).
+- Calcula métricas específicas del proceso.
 - Guarda estadísticas en `excel_stats.db` (tabla `stats`).
-- Mueve cada archivo procesado a una subcarpeta con la fecha actual `DDMMYYYY` dentro de `INSUMOS/Sincronizacion de pedidos/`.
+- Mueve cada archivo procesado a una subcarpeta con la fecha actual `DDMMYYYY` dentro de la misma carpeta del proceso.
 
-### Formato de entrada (Excel)
-El archivo debe contener, al menos, las columnas:
-- `Pedido Número`
-- `Estado` (se considera exitoso cuando su valor es "Exitoso", sin importar mayúsculas/minúsculas)
-
-Si faltan estas columnas, el proceso fallará con un error indicando las columnas faltantes.
+### Tipos de proceso soportados
+- `Sincronizacion de pedidos` (implementado):
+  - Columnas mínimas: `Pedido Número`, `Estado`
+  - Efectividad (%): un pedido es exitoso si alguna de sus filas tiene `Estado = "Exitoso"`.
+  - Total: cantidad de pedidos únicos por `Pedido Número`.
+- `Factura electronica` (implementado):
+  - Hoja: `Facturas`
+  - Agrupar por: `Factura`
+  - Condición de éxito (por fila): `Estado proceso` == `Exitoso` (ignorando mayúsculas/minúsculas y espacios)
+  - Efectividad (%): una factura es exitosa si alguna fila del grupo lo es; total = facturas únicas.
+- `Conciliacion DIAN`, `Conciliacion TC`, `Eventos acuse DIAN`, `Factura agencia de viajes`:
+  - Actualmente placeholders: leen el Excel y contabilizan filas (efectividad = 0.0) hasta definir columnas y reglas. Indica columnas y lógica y lo implementamos.
 
 ### Salida y base de datos
 - Base de datos: `excel_stats.db` (SQLite)
@@ -54,7 +64,6 @@ Si faltan estas columnas, el proceso fallará con un error indicando las columna
   - `total_registros` (INTEGER)
 
 #### Consultar resultados rápidamente (opcional)
-Desde PowerShell, puedes usar `python` para imprimir últimas filas:
 ```powershell
 python - << 'PY'
 import sqlite3
@@ -66,16 +75,20 @@ conn.close()
 PY
 ```
 
-### Errores comunes
-- "Faltan columnas requeridas": verifica que el Excel tenga `Pedido Número` y `Estado`.
-- "No se pudo mover ...": el archivo puede estar abierto en Excel; ciérralo e inténtalo de nuevo.
-- Problemas de permisos: ejecuta la terminal como usuario con permisos de escritura en el directorio del proyecto.
-
 ### Desarrollo
 Componentes principales:
-- `src/excel_processor.py` → Lee el Excel con `pandas` y calcula estadísticas.
-- `src/db_manager.py` → Crea la BD y guarda/consulta estadísticas.
-- `src/main.py` → Orquesta el procesamiento por carpeta, loguea y mueve archivos.
+- `src/processors/base_processor.py` → Base común: recorre carpeta, archiva por fecha, guarda estadísticas.
+- `src/processors/pedidos_processor.py` → Lógica de "Sincronizacion de pedidos".
+- `src/processors/placeholder_processor.py` → `Factura electronica` implementado; los demás procesos son placeholders a completar.
+- `src/main.py` → Orquesta todos los procesadores.
+
+### Errores comunes
+- "Faltan columnas requeridas": en pedidos, verifica `Pedido Número` y `Estado`; en factura electrónica, `Factura` y `Estado proceso` y que exista hoja `Facturas`.
+- "No se pudo mover ...": el archivo puede estar abierto en Excel; ciérralo e inténtalo de nuevo.
+- Permisos: ejecuta la terminal con permisos de escritura en el proyecto.
+
+### Próximos pasos
+Indica para cada proceso las columnas y reglas de cálculo (por ejemplo: qué define "exitoso" o cómo agrupar), y actualizaremos los procesadores correspondientes.
 
 ### Licencia
 Uso interno.
