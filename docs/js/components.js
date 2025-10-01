@@ -35,6 +35,7 @@ export function UploadPanel({ onResults }) {
     try {
       const results = [];
       for (const f of files) {
+        console.log(`Procesando archivo: ${f.name}`);
         const res = await readExcelFile(
           f,
           processType,
@@ -42,11 +43,13 @@ export function UploadPanel({ onResults }) {
           startDt || null,
           endDt || null
         );
+        console.log(`Resultado para ${f.name}:`, res);
         results.push(res);
       }
       onResults && onResults(results);
       setFiles([]);
     } catch (e) {
+      console.error('Error en handleSubmit:', e);
       setError(String(e));
     } finally {
       setBusy(false);

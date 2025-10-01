@@ -1,72 +1,110 @@
-// Processors for different report types
+// Processors for different report types using Danfo.js
 export class Processors {
-  static processPedidos(df) {
-    const cols = df[0] ? Object.keys(df[0]) : [];
-    if (!(cols.includes('Pedido Número') && cols.includes('Estado'))) {
-      console.log('Columnas encontradas:', cols);
-      throw new Error('Faltan columnas requeridas: Pedido Número, Estado');
-    }
-    
-    const byPedido = new Map();
-    for (const row of df) {
-      const pedido = row['Pedido Número'];
-      const estado = String(row['Estado'] ?? '').trim().toLowerCase();
-      const exito = estado === 'exitoso';
+  static async processPedidos(df) {
+    try {
+      // Convert JSON array to Danfo DataFrame
+      const df_danfo = new dfd.DataFrame(df);
       
-      if (!byPedido.has(pedido)) byPedido.set(pedido, false);
-      if (exito) byPedido.set(pedido, true);
-    }
-    
-    const total = byPedido.size;
-    let exitosos = 0;
-    for (const v of byPedido.values()) if (v) exitosos++;
-    const efectividad = total > 0 ? (exitosos / total) * 100 : 0;
-    
-    return { efectividad, total };
-  }
-
-  static processFacturaElectronica(df) {
-    const cols = df[0] ? Object.keys(df[0]) : [];
-    if (!(cols.includes('Factura') && cols.includes('Estado proceso'))) {
-      throw new Error('Faltan columnas requeridas: Factura, Estado proceso');
-    }
-    
-    const byFactura = new Map();
-    for (const row of df) {
-      const factura = row['Factura'];
-      const estado = String(row['Estado proceso'] ?? '').trim().toLowerCase();
-      const exito = estado === 'exitoso';
+      // Check required columns
+      const cols = df_danfo.columns;
+      if (!(cols.includes('Pedido Número') && cols.includes('Estado'))) {
+        console.log('Columnas encontradas:', cols);
+        throw new Error('Faltan columnas requeridas: Pedido Número, Estado');
+      }
       
-      if (!byFactura.has(factura)) byFactura.set(factura, false);
-      if (exito) byFactura.set(factura, true);
+      // Normalize Estado column to lowercase
+      df_danfo['Estado'] = df_danfo['Estado'].str.toLowerCase().str.trim();
+      
+      // Create success flag
+      df_danfo.addColumn('__exitoso', df_danfo['Estado'].eq('exitoso'));
+      
+      // Group by Pedido Número and check if any row is successful
+      const grouped = df_danfo.groupby(['Pedido Número']).agg({
+        '__exitoso': 'any'
+      });
+      
+      const total = grouped.shape[0];
+      const exitosos = grouped['__exitoso'].sum();
+      const efectividad = total > 0 ? (exitosos / total) * 100 : 0;
+      
+      return { efectividad, total };
+    } catch (error) {
+      console.error('Error en processPedidos:', error);
+      throw error;
     }
-    
-    const total = byFactura.size;
-    let exitosos = 0;
-    for (const v of byFactura.values()) if (v) exitosos++;
-    const efectividad = total > 0 ? (exitosos / total) * 100 : 0;
-    
-    return { efectividad, total };
   }
 
-  static processConciliacionDian(df) {
-    // Placeholder - count rows
-    return { efectividad: 0, total: df.length };
+  static async processFacturaElectronica(df) {
+    try {
+      // Convert JSON array to Danfo DataFrame
+      const df_danfo = new dfd.DataFrame(df);
+      
+      // Check required columns
+      const cols = df_danfo.columns;
+      if (!(cols.includes('Factura') && cols.includes('Estado proceso'))) {
+        throw new Error('Faltan columnas requeridas: Factura, Estado proceso');
+      }
+      
+      // Normalize Estado proceso column to lowercase
+      df_danfo['Estado proceso'] = df_danfo['Estado proceso'].str.toLowerCase().str.trim();
+      
+      // Create success flag
+      df_danfo.addColumn('__exitoso', df_danfo['Estado proceso'].eq('exitoso'));
+      
+      // Group by Factura and check if any row is successful
+      const grouped = df_danfo.groupby(['Factura']).agg({
+        '__exitoso': 'any'
+      });
+      
+      const total = grouped.shape[0];
+      const exitosos = grouped['__exitoso'].sum();
+      const efectividad = total > 0 ? (exitosos / total) * 100 : 0;
+      
+      return { efectividad, total };
+    } catch (error) {
+      console.error('Error en processFacturaElectronica:', error);
+      throw error;
+    }
   }
 
-  static processConciliacionTc(df) {
-    // Placeholder - count rows
-    return { efectividad: 0, total: df.length };
+  static async processConciliacionDian(df) {
+    try {
+      const df_danfo = new dfd.DataFrame(df);
+      return { efectividad: 0, total: df_danfo.shape[0] };
+    } catch (error) {
+      console.error('Error en processConciliacionDian:', error);
+      return { efectividad: 0, total: df.length };
+    }
   }
 
-  static processEventosAcuseDian(df) {
-    // Placeholder - count rows
-    return { efectividad: 0, total: df.length };
+  static async processConciliacionTc(df) {
+    try {
+      const df_danfo = new dfd.DataFrame(df);
+      return { efectividad: 0, total: df_danfo.shape[0] };
+    } catch (error) {
+      console.error('Error en processConciliacionTc:', error);
+      return { efectividad: 0, total: df.length };
+    }
   }
 
-  static processFacturaAgenciaViajes(df) {
-    // Placeholder - count rows
-    return { efectividad: 0, total: df.length };
+  static async processEventosAcuseDian(df) {
+    try {
+      const df_danfo = new dfd.DataFrame(df);
+      return { efectividad: 0, total: df_danfo.shape[0] };
+    } catch (error) {
+      console.error('Error en processEventosAcuseDian:', error);
+      return { efectividad: 0, total: df.length };
+    }
+  }
+
+  static async processFacturaAgenciaViajes(df) {
+    try {
+      const df_danfo = new dfd.DataFrame(df);
+      return { efectividad: 0, total: df_danfo.shape[0] };
+    } catch (error) {
+      console.error('Error en processFacturaAgenciaViajes:', error);
+      return { efectividad: 0, total: df.length };
+    }
   }
 
   static getProcessor(processType) {
@@ -82,28 +120,54 @@ export class Processors {
   }
 }
 
-// Date filtering utility
-export function filterByDatetime(df, colName, startISO, endISO) {
+// Date filtering utility using Danfo.js
+export async function filterByDatetime(df, colName, startISO, endISO) {
   if (!colName || !df[0] || !(colName in df[0])) return df;
   
-  const start = startISO ? new Date(startISO).getTime() : null;
-  const end = endISO ? new Date(endISO).getTime() : null;
-  
-  return df.filter(r => {
-    const v = r[colName];
-    const t = v ? new Date(v).getTime() : NaN;
-    if (isNaN(t)) return false;
-    if (start !== null && t < start) return false;
-    if (end !== null && t > end) return false;
-    return true;
-  });
+  try {
+    const df_danfo = new dfd.DataFrame(df);
+    
+    // Convert date column to datetime
+    df_danfo[colName] = df_danfo[colName].astype('datetime');
+    
+    let filtered_df = df_danfo;
+    
+    // Apply start date filter
+    if (startISO) {
+      const startDate = new Date(startISO);
+      filtered_df = filtered_df.query(filtered_df[colName].gte(startDate));
+    }
+    
+    // Apply end date filter
+    if (endISO) {
+      const endDate = new Date(endISO);
+      filtered_df = filtered_df.query(filtered_df[colName].lte(endDate));
+    }
+    
+    // Convert back to JSON array
+    return await filtered_df.toJSON();
+  } catch (error) {
+    console.error('Error en filterByDatetime:', error);
+    // Fallback to original method
+    const start = startISO ? new Date(startISO).getTime() : null;
+    const end = endISO ? new Date(endISO).getTime() : null;
+    
+    return df.filter(r => {
+      const v = r[colName];
+      const t = v ? new Date(v).getTime() : NaN;
+      if (isNaN(t)) return false;
+      if (start !== null && t < start) return false;
+      if (end !== null && t > end) return false;
+      return true;
+    });
+  }
 }
 
-// Excel file reader
-export function readExcelFile(file, processType, datetimeColumn, startISO, endISO) {
+// Excel file reader with Danfo.js integration
+export async function readExcelFile(file, processType, datetimeColumn, startISO, endISO) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const wb = XLSX.read(data, { type: 'array' });
@@ -119,12 +183,12 @@ export function readExcelFile(file, processType, datetimeColumn, startISO, endIS
         const ws = wb.Sheets[wsName];
         const json = XLSX.utils.sheet_to_json(ws, { defval: null });
         
-        // Apply date filtering if specified
-        const filtered = filterByDatetime(json, datetimeColumn, startISO, endISO);
+        // Apply date filtering if specified using Danfo.js
+        const filtered = await filterByDatetime(json, datetimeColumn, startISO, endISO);
         
-        // Process with appropriate processor
+        // Process with appropriate processor (now async)
         const processor = Processors.getProcessor(processType);
-        const { efectividad, total } = processor(filtered);
+        const { efectividad, total } = await processor(filtered);
         
         resolve({
           archivo: file.name,
@@ -133,6 +197,7 @@ export function readExcelFile(file, processType, datetimeColumn, startISO, endIS
           fecha_proceso: new Date().toISOString()
         });
       } catch (err) {
+        console.error('Error en readExcelFile:', err);
         reject(err);
       }
     };

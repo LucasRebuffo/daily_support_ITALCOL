@@ -20,6 +20,9 @@
   <!-- SheetJS for client-side Excel parsing -->
   <script crossorigin src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   
+  <!-- Danfo.js for data analysis -->
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/danfojs@1.2.0/lib/bundle.min.js"></script>
+  
   <style>
     body { 
       margin: 0; 
@@ -54,6 +57,9 @@
     window.readExcelFile = readExcelFile;
     window.UploadPanel = UploadPanel;
     window.ResultsTable = ResultsTable;
+    
+    // Make Danfo.js available globally
+    window.dfd = dfd;
 
     function Dashboard() {
       const [rows, setRows] = React.useState([]);
