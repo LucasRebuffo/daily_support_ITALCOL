@@ -12,6 +12,14 @@ venv/
 ENV/
 env/
 
+<<<<<<< HEAD
 # Temporary files
 *.tmp
 *.temp
+=======
+# Project-specific data inputs
+INSUMOS/
+INSUMOS/**/*.xlsx
+INSUMOS/**/*.xls
+INSUMOS/**/*.csv
+>>>>>>> parent of d3581b7 (Agrego cambio importante para poder subir archivos desde ui)
