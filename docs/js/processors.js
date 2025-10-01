@@ -3,6 +3,7 @@ export class Processors {
   static processPedidos(df) {
     const cols = df[0] ? Object.keys(df[0]) : [];
     if (!(cols.includes('Pedido Número') && cols.includes('Estado'))) {
+      console.log('Columnas encontradas:', cols);
       throw new Error('Faltan columnas requeridas: Pedido Número, Estado');
     }
     
