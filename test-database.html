@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Base de Datos - ITALCOL</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .data-display { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; }
+        .log { background: #000; color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Base de Datos - ITALCOL</h1>
+        <p>Esta página prueba específicamente la creación y funcionamiento de la base de datos.</p>
+        
+        <div id="status" class="test-section info">
+            ⏳ Inicializando...
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Pruebas de Base de Datos</h3>
+            <button onclick="testTableCreation()">Crear/Verificar Tabla</button>
+            <button onclick="testDataInsert()">Insertar Datos de Prueba</button>
+            <button onclick="testDataRetrieval()">Recuperar Datos</button>
+            <button onclick="clearAllData()">Limpiar Todo</button>
+            <div id="testResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>� Procesamiento con Filtro de Fecha</h3>
+            <input type="file" id="dbTestFile" accept=".xlsx" />
+            <div style="margin-top:8px;">
+                <input type="text" id="datetimeColumn" placeholder="Columna fecha/hora (ej: fecha_proceso)" style="width:220px; padding:6px;" />
+                <input type="datetime-local" id="startDt" style="padding:6px; margin-left:6px;" />
+                <input type="datetime-local" id="endDt" style="padding:6px; margin-left:6px;" />
+            </div>
+            <button onclick="processDbTestFile()" style="margin-top:8px;">Procesar con filtro</button>
+            <div id="dbTestResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>�📊 Datos Actuales</h3>
+            <div id="currentData" class="data-display">Cargando...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Log de Consola</h3>
+            <div id="consoleLog" class="log"></div>
+            <button onclick="clearLog()">Limpiar Log</button>
+        </div>
+    </div>
+
+    <!-- Librerías necesarias -->
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="docs/config.js"></script>
+    <script src="docs/app.js"></script>
+
+    <script>
+        let app = null;
+        let originalConsoleLog = console.log;
+        let originalConsoleError = console.error;
+        let originalConsoleWarn = console.warn;
+
+        // Interceptar logs de consola
+        function setupConsoleInterception() {
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                addToLog('LOG', args.join(' '));
+            };
+            
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                addToLog('ERROR', args.join(' '));
+            };
+            
+            console.warn = function(...args) {
+                originalConsoleWarn.apply(console, args);
+                addToLog('WARN', args.join(' '));
+            };
+        }
+
+        function addToLog(type, message) {
+            const logDiv = document.getElementById('consoleLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] <span style="color: ${type === 'ERROR' ? '#ff6b6b' : type === 'WARN' ? '#ffa726' : '#4caf50'}">${type}:</span> ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('consoleLog').innerHTML = '';
+        }
+
+        // Esperar a que la aplicación se inicialice
+        document.addEventListener('DOMContentLoaded', () => {
+            setupConsoleInterception();
+            setTimeout(() => {
+                app = window.italcolApp;
+                updateStatus();
+                loadCurrentData();
+            }, 2000);
+        });
+
+        function updateStatus() {
+            const statusDiv = document.getElementById('status');
+            if (app && app.db) {
+                const dbType = app.db.type || 'localStorage';
+                statusDiv.className = 'test-section success';
+                statusDiv.innerHTML = `✅ Aplicación inicializada<br>
+                    📊 Almacenamiento: ${dbType.toUpperCase()}<br>
+                    🔗 Estado: Disponible`;
+            } else {
+                statusDiv.className = 'test-section error';
+                statusDiv.innerHTML = '❌ Error inicializando aplicación';
+            }
+        }
+
+        async function testTableCreation() {
+            const resultsDiv = document.getElementById('testResults');
+            try {
+                resultsDiv.innerHTML = '<div class="info">⏳ Creando/verificando tabla...</div>';
+                
+                await app.createTables();
+                
+                resultsDiv.innerHTML = '<div class="success">✅ Tabla creada/verificada correctamente</div>';
+                loadCurrentData();
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error creando tabla: ${error.message}</div>`;
+            }
+        }
+
+        async function testDataInsert() {
+            const resultsDiv = document.getElementById('testResults');
+            try {
+                resultsDiv.innerHTML = '<div class="info">⏳ Insertando datos de prueba...</div>';
+                
+                const testData = [
+                    { archivo: 'test_pedidos_001.xlsx', efectividad: 95.5, totalRegistros: 150, proceso: 'Sincronizacion de pedidos' },
+                    { archivo: 'test_facturas_002.xlsx', efectividad: 87.2, totalRegistros: 75, proceso: 'Factura electronica' },
+                    { archivo: 'test_general_003.xlsx', efectividad: 0, totalRegistros: 200, proceso: 'General' }
+                ];
+
+                for (const data of testData) {
+                    await app.saveStats(data.archivo, data.efectividad, data.totalRegistros, data.proceso);
+                }
+
+                resultsDiv.innerHTML = '<div class="success">✅ Datos de prueba insertados correctamente</div>';
+                loadCurrentData();
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error insertando datos: ${error.message}</div>`;
+            }
+        }
+
+        async function testDataRetrieval() {
+            const resultsDiv = document.getElementById('testResults');
+            try {
+                resultsDiv.innerHTML = '<div class="info">⏳ Recuperando datos...</div>';
+                
+                await app.loadStats();
+                const stats = app.stats;
+                
+                if (stats.length === 0) {
+                    resultsDiv.innerHTML = '<div class="warning">⚠️ No hay datos para recuperar</div>';
+                } else {
+                    resultsDiv.innerHTML = `<div class="success">✅ Recuperados ${stats.length} registros correctamente</div>`;
+                }
+                
+                loadCurrentData();
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error recuperando datos: ${error.message}</div>`;
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('¿Estás seguro de que quieres limpiar todos los datos?')) {
+                localStorage.removeItem('italcol_stats');
+                document.getElementById('testResults').innerHTML = '<div class="warning">⚠️ Todos los datos han sido limpiados</div>';
+                loadCurrentData();
+            }
+
+            async function processDbTestFile() {
+                const fileInput = document.getElementById('dbTestFile');
+                const resDiv = document.getElementById('dbTestResult');
+                if (!fileInput.files[0]) {
+                    resDiv.innerHTML = '<div class="warning">⚠️ Selecciona un archivo</div>';
+                    return;
+                }
+                const datetimeColumn = document.getElementById('datetimeColumn').value || null;
+                const startDt = document.getElementById('startDt').value || null;
+                const endDt = document.getElementById('endDt').value || null;
+                try {
+                    resDiv.innerHTML = '<div class="info">⏳ Procesando...</div>';
+                    const result = await app.processExcelFile(fileInput.files[0], datetimeColumn, startDt, endDt);
+                    resDiv.innerHTML = `<div class="success">✅ Procesado: ${result.archivo} - ${result.totalRegistros ?? result.total_registros} registros</div>`;
+                    loadCurrentData();
+                } catch (e) {
+                    resDiv.innerHTML = `<div class="error">❌ Error: ${e.message}</div>`;
+                }
+            }
+        }
+
+        async function loadCurrentData() {
+            const dataDiv = document.getElementById('currentData');
+            try {
+                await app.loadStats();
+                const stats = app.stats;
+                
+                if (stats.length === 0) {
+                    dataDiv.innerHTML = 'No hay datos disponibles';
+                    return;
+                }
+
+                let html = `<strong>Total de registros: ${stats.length}</strong><br><br>`;
+                
+                stats.slice(0, 5).forEach((stat, index) => {
+                    html += `
+                        <div style="margin: 5px 0; padding: 5px; background: #e9ecef; border-radius: 3px;">
+                            <strong>${index + 1}.</strong> ${stat.archivo}<br>
+                            Efectividad: ${stat.efectividad}% | 
+                            Registros: ${stat.totalRegistros ?? stat.total_registros} | 
+                            Proceso: ${stat.proceso || 'General'}<br>
+                            <small>Fecha: ${new Date(stat.fecha_proceso).toLocaleString()}</small>
+                        </div>
+                    `;
+                });
+                
+                if (stats.length > 5) {
+                    html += `<div style="margin: 5px 0; font-style: italic;">... y ${stats.length - 5} más</div>`;
+                }
+                
+                dataDiv.innerHTML = html;
+            } catch (error) {
+                dataDiv.innerHTML = `Error cargando datos: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

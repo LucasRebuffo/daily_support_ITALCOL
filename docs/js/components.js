@@ -1,15 +1,34 @@
-// UI Components using React and Material UI
-export function StatusChip({ value }) {
-  const ok = typeof value === 'number' ? value >= 95 : false;
-  const label = typeof value === 'number' ? value.toFixed(2) + '%' : String(value ?? '');
+// Componentes de UI usando React y Material UI (UMD friendly)
+console.log('docs/js/components.js cargado');
+function StatusChip({ value }) {
+  const v = (typeof value === 'number') ? value : (parseFloat(value) || 0);
+  const label = isNaN(v) ? '' : v.toFixed(2) + '%';
+
+  // Escala solicitada:
+  // - < 25% : rojo
+  // - 25% - 60% : naranja
+  // - 60% - 95% : amarillo
+  // - >= 95% : verde
+  let bg = '#fee2e2'; // rojo claro
+  let color = '#c53030';
+
+  if (v >= 95) {
+    bg = '#c6f6d5'; color = '#22543d'; // verde
+  } else if (v >= 60) {
+    bg = '#fef9c3'; color = '#92400e'; // amarillo
+  } else if (v >= 25) {
+    bg = '#ffedd5'; color = '#c05621'; // naranja
+  }
+
   return React.createElement(MaterialUI.Chip, {
     label,
-    color: ok ? 'success' : 'default',
-    variant: ok ? 'filled' : 'outlined'
+    variant: 'filled',
+    size: 'small',
+    sx: { backgroundColor: bg, color: color, fontWeight: 600 }
   });
 }
 
-export function UploadPanel({ onResults }) {
+function UploadPanel({ onResults }) {
   const [files, setFiles] = React.useState([]);
   const [processType, setProcessType] = React.useState('Sincronizacion de pedidos');
   const [startDt, setStartDt] = React.useState('');
@@ -35,7 +54,7 @@ export function UploadPanel({ onResults }) {
     try {
       const results = [];
       for (const f of files) {
-        console.log(`Procesando archivo: ${f.name}`);
+        console.log(`UploadPanel: procesando archivo: ${f.name}`);
         const res = await readExcelFile(
           f,
           processType,
@@ -43,13 +62,13 @@ export function UploadPanel({ onResults }) {
           startDt || null,
           endDt || null
         );
-        console.log(`Resultado para ${f.name}:`, res);
+        console.log(`UploadPanel: resultado para ${f.name}:`, res);
         results.push(res);
       }
       onResults && onResults(results);
       setFiles([]);
     } catch (e) {
-      console.error('Error en handleSubmit:', e);
+      console.error('UploadPanel: Error en handleSubmit:', e);
       setError(String(e));
     } finally {
       setBusy(false);
@@ -110,7 +129,7 @@ export function UploadPanel({ onResults }) {
   );
 }
 
-export function ResultsTable({ rows, query, setQuery }) {
+function ResultsTable({ rows, query, setQuery }) {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
@@ -122,6 +141,8 @@ export function ResultsTable({ rows, query, setQuery }) {
     ));
   }, [rows, query]);
 
+  console.log('ResultsTable: filas recibidas =', rows.length, 'query=', query);
+
   const paged = React.useMemo(() => {
     const start = page * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
@@ -131,7 +152,7 @@ export function ResultsTable({ rows, query, setQuery }) {
 
   return React.createElement(MaterialUI.Paper, { elevation: 1, sx: { p: 2 } },
     React.createElement(MaterialUI.Stack, { direction: 'row', spacing: 2, alignItems: 'center' },
-      React.createElement(MaterialUI.Typography, { variant: 'h6' }, 'Registros (sesión actual)'),
+      React.createElement(MaterialUI.Typography, { variant: 'h6' }, 'Estadísticas'),
       React.createElement(MaterialUI.Box, { sx: { flexGrow: 1 } }),
       React.createElement(MaterialUI.TextField, { 
         size: 'small', 
@@ -156,7 +177,7 @@ export function ResultsTable({ rows, query, setQuery }) {
               React.createElement(MaterialUI.TableCell, null, r.archivo ?? ''),
               React.createElement(MaterialUI.TableCell, null, new Date(r.fecha_proceso).toLocaleString()),
               React.createElement(MaterialUI.TableCell, null, React.createElement(StatusChip, { value: r.efectividad })),
-              React.createElement(MaterialUI.TableCell, null, r.total_registros ?? '')
+              React.createElement(MaterialUI.TableCell, null, r.totalRegistros ?? r.total_registros ?? '')
             )
           ))
         )
@@ -173,3 +194,8 @@ export function ResultsTable({ rows, query, setQuery }) {
     )
   );
 }
+
+// Exponer componentes al scope global para uso con scripts UMD
+window.StatusChip = StatusChip;
+window.UploadPanel = UploadPanel;
+window.ResultsTable = ResultsTable;
